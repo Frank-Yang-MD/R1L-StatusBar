@@ -1,0 +1,6 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- COPYRIGHT (C) 2023 MITSUBISHI ELECTRIC CORPORATION -->
+<!-- ALL RIGHTS RESERVED -->
+
+<manifest xmlns:android="http://schemas.android.com/apk/res/android"
+        package="com.fca.ahu.lib.statusbarmanagerlib" />

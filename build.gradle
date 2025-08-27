@@ -1,0 +1,148 @@
+/*
+ * COPYRIGHT (C) 2023 MITSUBISHI ELECTRIC CORPORATION
+ * ALL RIGHTS RESERVED
+ */
+
+// Run all tests:
+// ./gradlew clean jacocoTestReport
+
+// Run only specified test set
+// (require the previous command to be executed at least once):
+// ./gradlew testDebugUnitTest --tests=ClassWithTestsName jacocoTestReport
+
+// Both of the above commands produce coverage and execution reports.
+// Reports can be found by the following paths respectively:
+// build/reports/jacoco/jacocoTestReport/html/index.html
+// build/reports/tests/testDebugUnitTest/index.html
+
+buildscript {
+    repositories {
+        jcenter()
+        google()
+    }
+    dependencies {
+        classpath 'com.android.tools.build:gradle:4.1.1'
+    }
+}
+
+plugins {
+    id 'jacoco'
+}
+
+apply plugin: 'com.android.library'
+apply from: 'jacoco.gradle'
+
+def featuresDir = '../../../../efw/Features'
+def outDir = '../../../../../../out'
+
+android.signingConfigs['debug'].storeFile = file("${featuresDir}/meaa_debug.keystore")
+apply from:("${featuresDir}/sdk_config.gradle")
+apply from:("${featuresDir}/version_config.gradle")
+
+// Link against R1L's custom made version of android framework to be able to build with gradle.
+// bootstrapClasspath need to be prepended with R1L's framework internals as it is set to include
+// "unifiedSdkVersion" version of the android framework by default.
+tasks.withType(JavaCompile) {
+    def defaultClassPath
+    doFirst {
+        defaultClassPath = options.bootstrapClasspath
+        def aospFramework = fileTree(
+            include: [
+                    'classes.jar'
+            ],
+            dir: "${outDir}/target/common/obj/JAVA_LIBRARIES/framework_intermediates"
+        )
+        options.bootstrapClasspath = aospFramework + options.bootstrapClasspath
+    }
+    doLast {
+        options.bootstrapClasspath = defaultClassPath
+    }
+}
+
+android {
+    compileSdkVersion unifiedSdkVersion
+    buildToolsVersion unifiedBuildToolsVersion
+
+    defaultConfig {
+        minSdkVersion unifiedSdkVersion
+        targetSdkVersion unifiedSdkVersion
+        testInstrumentationRunner "android.support.test.runner.AndroidJUnitRunner"
+    }
+
+    testOptions {
+        unitTests.returnDefaultValues = true
+        unitTests.all {
+            setIgnoreFailures(true)
+            jvmArgs '-Djava.library.path=${outDir}/host/linux-x86/lib64'
+        }
+    }
+
+    // Run each test suite (i.e., ...Test.java class) in a separate environment
+    // using the maximum available count of threads.
+    // Goals are following:
+    // 1. Speed up the execution time for all tests.
+    // 2. Give each test suite its sandbox (process) and prevent undesirable interference
+    //    between test suits. For example, suppressing the static init of some class
+    //    in one test suit will not affect others.
+    tasks.withType(Test) {
+        maxParallelForks = Runtime.runtime.availableProcessors()
+        forkEvery = 1
+    }
+
+    sourceSets {
+        main {
+            manifest.srcFile 'tests/AndroidManifest.xml'
+            java.srcDirs = ["library/java",
+                    "tests/Android_mock"
+            ]
+        }
+
+        test {
+            java.srcDirs = ["tests/manager"]
+        }
+    }
+
+    buildTypes {
+        release {
+            minifyEnabled false
+            proguardFiles getDefaultProguardFile('proguard-android.txt'), 'proguard-rules.pro'
+        }
+    }
+    compileOptions {
+        sourceCompatibility JavaVersion.VERSION_1_8
+        targetCompatibility JavaVersion.VERSION_1_8
+    }
+    lintOptions {
+        abortOnError false
+    }
+
+    packagingOptions {
+        excludes.add("META-INF/*")
+    }
+}
+
+dependencies {
+    // Mockito
+    testImplementation 'org.mockito:mockito-core:3.7.7'
+    androidTestImplementation 'org.mockito:mockito-core:3.7.7'
+
+    // PowerMock
+    testImplementation 'org.powermock:powermock-core:2.0.9'
+    testImplementation 'org.powermock:powermock-module-junit4:2.0.9'
+    testImplementation 'org.powermock:powermock-api-mockito2:2.0.9'
+
+    // JUnit
+    testImplementation 'junit:junit:4.13.2'
+
+    // Google Android all library
+    testImplementation 'org.robolectric:android-all:8.1.0-robolectric-4611349'
+
+    implementation 'androidx.constraintlayout:constraintlayout:1.1.3'
+}
+
+allprojects {
+    repositories {
+        jcenter()
+        google()
+    }
+}

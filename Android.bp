@@ -1,0 +1,41 @@
+// COPYRIGHT (C) 2021 MITSUBISHI ELECTRIC CORPORATION
+// ALL RIGHTS RESERVED
+
+//////////////////////////////
+// BUILD AIDL LIBRARY
+/////////////////////////////
+
+java_library {
+    name: "StatusBarServiceInterface",
+    vendor: true,
+
+    srcs: [
+        "interface/**/*.aidl",
+    ],
+    aidl: {
+        local_include_dirs: ["interface"],
+    },
+    optimize: {
+        enabled: false,
+    },
+}
+
+//////////////////////////////
+// BUILD MANAGER LIBRARY
+//////////////////////////////
+
+java_library {
+    name: "StatusBarManager",
+    vendor: true,
+
+    srcs: [
+        "library/java/**/*.java",
+    ],
+    optimize: {
+        enabled: false,
+    },
+    static_libs: [
+        "StatusBarServiceInterface",
+        "CommonAppEnablerInterface",
+    ],
+}
